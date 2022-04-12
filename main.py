@@ -1,5 +1,5 @@
-from opcode import stack_effect
 import sys
+from queue import Queue
 
 
 class State():
@@ -33,10 +33,6 @@ class State():
             return False
         return True
 
-
-
-
-
 def init_state(file): 
     left = []
     right = []
@@ -69,6 +65,45 @@ def init_state(file):
 
     return state
 
+def breadth_first_search(init_state: State, goal_state: State):
+    # create frontier
+    frontier = []
+    # push initial state onto queue
+    frontier.append(init_state)
+    # while queue is not empty
+    while (len(frontier) > 0):
+        # pop state off queue
+        state: State = frontier.pop(0)
+        # if state is goal state, return path
+        if (state == goal_state):
+            return state
+        # if state is valid
+        if (state.isValidState()):
+            # push children onto queue
+            frontier.append(state.leftChild())
+            frontier.append(state.rightChild())
+    
+
+def depth_first_search(init_state, goal_state):
+    visited = {}
+    # create frontier
+    frontier = []
+    # push initial state onto frontier
+    frontier.append(init_state)
+    # while frontier is not empty
+    while (len(frontier) > 0):
+        # pop curr_state off frontier
+        curr_state = frontier.pop()
+        # if curr_state is goal curr_state, return path
+        if (curr_state == goal_state):
+            return curr_state
+        # if curr_state is valid
+        if (curr_state not in visited):
+            # add curr_state to visited
+            visited.add(curr_state)
+            # push children onto frontier
+            frontier.append(curr_state.leftChild())
+            frontier.append(curr_state.rightChild())
 
 def main(args):
     if len(args) != 5:
