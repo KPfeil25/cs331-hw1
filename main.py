@@ -1,32 +1,51 @@
 import sys
-
+from queue import PriorityQueue
 
 class State():
-    def __init__(self, chickensLeft, wolvesLeft, chickensRight, wolvesRight, boat, parent) -> None:
-        self.chickensLeft = chickensLeft
-        self.wolvesLeft = wolvesLeft
-        self.chickensRight = chickensRight
-        self.wolvesRight = wolvesRight
+    def __init__(self, chickensLeft, wolvesLeft, chickensRight, wolvesRight, boat, parent, depth) -> None:
+        self.chickensLeft: int = chickensLeft
+        self.wolvesLeft: int = wolvesLeft
+        self.chickensRight: int = chickensRight
+        self.wolvesRight: int = wolvesRight
         self.boat = boat
         self.parent = parent
+        self.depth: int = depth
+
+    # def __eq__(self, other) -> bool:
+    #     if (self.chickensRight == other.chickensRight and
+    #         self.wolvesRight == other.wolvesRight and
+    #         self.chickensLeft == other.chickensLeft and
+    #         self.wolvesLeft == other.wolvesLeft and
+    #         self.boat == other.boat and
+    #             self.parent == other.parent):
+    #         return True
+    #     else:
+    #         return False
 
     def __eq__(self, other) -> bool:
-        if (self.chickensRight == other.chickensRight and
-            self.wolvesRight == other.wolvesRight and
-            self.chickensLeft == other.chickensLeft and
-            self.wolvesLeft == other.wolvesLeft and
-            self.boat == other.boat and
-                self.parent == other.parent):
+        return self.__dict__ == other.__dict__
+    
+    def __lt__(self, other):
+        if self.chickensLeft < other.chickensLeft and self.wolvesLeft < other.wolvesLeft:
             return True
         else:
             return False
 
+    def __gt__(self, other):
+        if self.chickensLeft > other.chickensLeft and self.wolvesLeft > other.wolvesLeft:
+            return True
+        else:
+            return False
+
+    def __repr__(self):
+        return "left bank: %s %s right bank: %s %s boat: %s" % (self.chickensLeft, self.wolvesLeft, self.chickensRight, self.wolvesRight, self.boat)
+
     def isValidState(self) -> bool:
         # check left side for chickens and wolves
-        if (self.chickensLeft > 0) and (self.chickensLeft < self.wolvesLeft):
+        if (self.chickensLeft) > 0 and (self.chickensLeft < self.wolvesLeft):
             return False
         # check right side for chickens and wolves
-        if (self.chickensRight > 0) and (self.chickensRight < self.wolvesRight):
+        if (self.chickensRight) > 0 and (self.chickensRight < self.wolvesRight):
             return False
         # make sure that moves that subtract chickens or wolves dont go below zero
         if (self.chickensLeft < 0 or self.chickensRight < 0 or self.wolvesLeft < 0 or self.wolvesRight < 0):
@@ -59,14 +78,21 @@ def init_state(file):
     # create initial state
     # if boat is on the left shore
     if (left[2] == 1):
-        state = State(left[0], left[1], right[0], right[1], "left", None)
+        state = State(left[0], left[1], right[0], right[1], "left", None, None)
+        print(state)
     # else boat is on the right shore
     else:
-        state = State(left[0], left[1], right[0], right[1], 'right', None)
+        state = State(left[0], left[1], right[0], right[1], 'right', None, None)
+        print(state)
 
     return state
 
-def breadth_first_search(init_state: State, goal_state: State):
+def heuristic(curr_state: State, goal_state: State):
+    # smaller number means that we are closer to the solution
+    return (goal_state.wolvesLeft - curr_state.wolvesLeft) + (goal_state.chickensLeft - curr_state.chickensLeft)
+
+def breadth_first_search(init_state, goal_state):
+    visited = []
     # create frontier
     frontier = []
     # push initial state onto queue
@@ -74,15 +100,16 @@ def breadth_first_search(init_state: State, goal_state: State):
     # while queue is not empty
     while (len(frontier) > 0):
         # pop state off queue
-        state: State = frontier.pop(0)
+        state = frontier.pop(0)
         # if state is goal state, return path
         if (state == goal_state):
             return state
-        # if state is valid
-        if (state.isValidState()):
-            # push children onto queue
-            frontier.append(state.leftChild())
-            frontier.append(state.rightChild())
+        # if we have not been to this state before
+        if state not in visited:
+            visited.append(state)
+            valid_moves = search(state)
+            for move in valid_moves:
+                frontier.append(move)
 
 def depth_first_search(init_state, goal_state):
   visited = {}
@@ -108,15 +135,14 @@ def depth_first_search(init_state, goal_state):
   return False
 
 def iterative_deepening_search(init_state, goal_state):
-  depth_limit = 0
+  depth_limit = 500
   visited = {}
   # create frontier
   frontier = []
-  goal_found = False
   # push initial state onto frontier
   frontier.append(init_state)
   # while frontier is not empty
-  while (goal_found == False):
+  for i in range(depth_limit):
     while (len(frontier) > 0):
       # pop curr_state off frontier
       curr_state = frontier.pop()
@@ -129,11 +155,30 @@ def iterative_deepening_search(init_state, goal_state):
           # add curr_state to visited
           visited.add(curr_state)
           #check depth limit HERE -> NEED TO ADD LIMIT TO STATE
+          if(curr_state.depth < depth_limit):
+                frontier.add(search(curr_state))
 
-          # push children onto frontier
-          frontier.add(search(curr_state))
   # if frontier is empty, return False because no solution was found
   return False
+
+
+def astar(init_state, goal_state):
+    visited = {}
+    frontier = PriorityQueue()
+    frontier.put(heuristic(init_state, goal_state), init_state)
+    while(len(frontier) > 0):
+        #get curr state from the priority queue
+        curr_state = frontier.get()[1]
+        # if curr_state is goal curr_state, return path
+        if (curr_state == goal_state):
+            # solution found
+            return curr_state
+        if (curr_state not in visited):
+            # add curr_state to visited
+            visited.add(curr_state)
+            frontier.add(search(curr_state))
+    # if frontier is empty, return False because no solution was found
+    return False
 
 
 def search(state):
@@ -191,8 +236,17 @@ def main(args):
         print("Usage: python3 main.py <initial state file> <goal state file> <mode> <output file>")
         sys.exit(1)
 
-    init_state(args[1])
+    start_state = sys.argv[1]
+    goal_state = sys.argv[2]
+    mode = sys.argv[3]
 
+    starting_state = init_state(start_state)
+    goal_state = init_state(goal_state)
+
+    if mode == 'bfs':
+        solution = path(breadth_first_search(starting_state, goal_state))
+        
+    print(solution)
 
 if __name__ == "__main__":
     start_state = sys.argv[1]
